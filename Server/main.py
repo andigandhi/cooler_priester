@@ -26,15 +26,17 @@ werte = {
     14: "A",
 }
 
-
+# Eine Zeile JSON hinzufügen
 def addJson(msg, key, val):
     return msg + "\t\"" + key + "\": " + val + ",\n"
 
 
+# Klasse für das Objekt "Karte"
 class Karte:
     farbe, zahl = -1, -1
     id = -1
 
+    # Initialisierung über die ID (0-51)
     def __init__(self, id):
         if id == -1:
             return
@@ -52,6 +54,7 @@ class Karte:
     def __repr__(self):
         return str(self.id)
 
+    # Test ob eine Karte spielbar ist
     def spielbar(self, k):
         # 2 oder 3 immer spielbar
         b = (self.zahl == 2 or self.zahl == 3)
@@ -116,7 +119,10 @@ class Ablage:
     def oben(self):
         if len(self.karten) == 0:
             return Karte(-1)
-        return self.karten[-1]
+        for i in range(len(self.karten)):
+            if self.karten[-1-i].zahl != 3:
+                return self.karten[-1-i]
+        return Karte(-1)
 
     def ablegen(self, karte):
         self.karten.append(karte)
@@ -153,15 +159,18 @@ class Spieler:
                     ablage.ablegen(k)
                     karten.remove(k)
 
-            # Verbrennen
-            if karte.zahl == 10 or stapel.verbrennbar():
-                ablage.karten = []
-
             # Nachziehen
             while len(self.karten) < 3:
                 k = stapel.zieheKarte()
                 if k is not None and k.id != -1:
                     self.karten.append(k)
+                else:
+                    break
+
+            # Verbrennen
+            if karte.zahl == 10 or stapel.verbrennbar():
+                ablage.karten = []
+                return False
 
             return True
         return False
