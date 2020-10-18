@@ -1,5 +1,8 @@
+import pathlib
 import random
 import asyncio
+import ssl
+
 import websockets
 from math import floor
 
@@ -26,6 +29,7 @@ werte = {
     14: "A",
 }
 
+
 # Eine Zeile JSON hinzufügen
 def addJson(msg, key, val):
     return msg + "\t\"" + key + "\": " + val + ",\n"
@@ -37,13 +41,13 @@ class Karte:
     id = -1
 
     # Initialisierung über die ID (0-51)
-    def __init__(self, id):
+    def __init__(self, kartenId):
         if id == -1:
             return
 
-        self.zahl = floor(id / 4) + 2
-        self.farbe = id % 4
-        self.id = id
+        self.zahl = floor(kartenId / 4) + 2
+        self.farbe = kartenId % 4
+        self.id = kartenId
 
     def getID(self):
         return self.id
@@ -60,7 +64,7 @@ class Karte:
         b = (self.zahl == 2 or self.zahl == 3)
 
         # Bei 7 drunter legen
-        if (k.zahl == 7):
+        if k.zahl == 7:
             if self.zahl < 7:
                 b = True
 
@@ -120,8 +124,8 @@ class Ablage:
         if len(self.karten) == 0:
             return Karte(-1)
         for i in range(len(self.karten)):
-            if self.karten[-1-i].zahl != 3:
-                return self.karten[-1-i]
+            if self.karten[-1 - i].zahl != 3:
+                return self.karten[-1 - i]
         return Karte(-1)
 
     def ablegen(self, karte):
@@ -130,12 +134,15 @@ class Ablage:
 
 class Spieler:
     verdeckt, offen, karten = [], [], []
-    name = "andyG"
+    name = ""
+    websocket = None
 
-    def __init__(self, karten):
+    def __init__(self, name, karten, socket):
         self.verdeckt = karten[0:3]
         self.offen = karten[3:6]
         self.karten = karten[6:9]
+        self.websocket = socket
+        self.name = name
 
     def __str__(self):
         return self.name
@@ -183,13 +190,25 @@ class Spiel:
     spieler = []
 
     for i in range(3):
-        spieler.append(Spieler(st.verteileKarten()))
+        spieler.append(Spieler("bot"+str(i), st.verteileKarten(), None))
 
-    def addSpieler(self, name):
-        for sp in self.spieler:
-            if sp.name == name and False:
+    def addSpieler(self, name, socket):
+        for spieler in self.spieler:
+            if spieler.name == name and False:
                 return
-        self.spieler.append(Spieler(self.st.verteileKarten()))
+        self.spieler.append(Spieler(name, self.st.verteileKarten(), socket))
+
+    def getSpielerByName(self, name):
+        for sp in self.spieler:
+            if sp.name == name:
+                return sp
+        return None
+
+    async def benachrichtige(self):
+        for i in range(len(self.spieler)):
+            print(self.spieler[i].websocket)
+            if self.spieler[i].websocket:
+                await self.spieler[i].websocket.send(self.socketNachricht(i))
 
     def naechster(self):
         self.dran = (self.dran + 1 + (self.ablage.oben().zahl == 4)) % 4
@@ -200,10 +219,12 @@ class Spiel:
 
         if karteId >= 0:
             k = self.spieler[self.dran].karten[karteId]
-            spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st, self.spieler[self.dran].karten)
+            spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
+                                                                   self.spieler[self.dran].karten)
         else:
-            k = self.spieler[self.dran].offen[-1-karteId]
-            spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st, self.spieler[self.dran].offen)
+            k = self.spieler[self.dran].offen[-1 - karteId]
+            spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
+                                                                   self.spieler[self.dran].offen)
 
         if spielzugErfolgreich:
             self.naechster()
@@ -214,11 +235,13 @@ class Spiel:
         print(self.spieler[self.dran].karten)
 
     def istdran(self, name):
+        print(self.spieler[self.dran].name)
+        print(name)
         return self.spieler[self.dran].name == name
 
     def socketNachricht(self, nr):
         msg = "{\n"
-        msg = addJson(msg, "Dran", str(nr == self.dran).lower())
+        msg = addJson(msg, "Dran", str(self.istdran(self.spieler[nr].name)).lower())
         msg = addJson(msg, "Namen", str(self.spieler).replace("[", "[\"").replace("]", "\"]")).replace(", ", "\", \"")
         msg = addJson(msg, "Karten", str(self.spieler[nr].karten))
         msg = addJson(msg, "Offen", str(self.spieler[nr].offen))
@@ -227,7 +250,7 @@ class Spiel:
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
         print(msg)
-        return (msg)
+        return msg
 
     def laeuft(self):
         a = 1
@@ -243,22 +266,24 @@ if __name__ == '__main__':
 
 
     async def socketLoop(websocket, path):
+        print("New Client!")
         while True:
             msg = await websocket.recv()
             msg = str(msg).split(";")
             print(msg)
-            if len(msg) > 1:
+            if len(msg) > 1 and len(sp.spieler) == 4:
                 if sp.istdran(msg[0]):
                     if msg[1] == "nehme":
                         sp.nehme()
                     else:
                         sp.spielzug(int(msg[1]))
             else:
-                if len(sp.spieler) < 4:
-                    sp.addSpieler(msg[0])
+                if sp.getSpielerByName(msg[0]):
+                    sp.getSpielerByName(msg[0]).websocket = websocket
+                elif len(sp.spieler) < 4:
+                    sp.addSpieler(msg[0], websocket)
 
-            await websocket.send(sp.socketNachricht(sp.dran))
-
+            await sp.benachrichtige()
 
     start_server = websockets.serve(socketLoop, "localhost", 8442)
     asyncio.get_event_loop().run_until_complete(start_server)
