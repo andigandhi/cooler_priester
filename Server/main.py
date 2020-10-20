@@ -206,7 +206,6 @@ class Spiel:
 
     async def benachrichtige(self):
         for i in range(len(self.spieler)):
-            print(self.spieler[i].websocket)
             if self.spieler[i].websocket:
                 await self.spieler[i].websocket.send(self.socketNachricht(i))
 
@@ -232,11 +231,8 @@ class Spiel:
     def nehme(self):
         karten = self.ablage.kartenAufnehmen()
         self.spieler[self.dran].karten += karten
-        print(self.spieler[self.dran].karten)
 
     def istdran(self, name):
-        print(self.spieler[self.dran].name)
-        print(name)
         return self.spieler[self.dran].name == name
 
     def socketNachricht(self, nr):
@@ -247,10 +243,19 @@ class Spiel:
         msg = addJson(msg, "Offen", str(self.spieler[nr].offen))
         msg = addJson(msg, "Verdeckt", str(self.spieler[nr].verdeckt[-1].id))
         msg = addJson(msg, "Ablage", str(self.ablage.karten))
+        msg = addJson(msg, "Andere", self.getAndereKarten(nr))
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
         print(msg)
         return msg
+
+    def getAndereKarten(self, nr):
+        k = "["
+        for i in range(len(self.spieler)):
+            if i != nr:
+                k += "\"" + self.spieler[i].name + "\", "
+                k += str(len(self.spieler[i].karten)) + ", " + str(self.spieler[i].offen) + ", "
+        return k[:-2] + "]"
 
     def laeuft(self):
         a = 1
@@ -266,7 +271,6 @@ if __name__ == '__main__':
 
 
     async def socketLoop(websocket, path):
-        print("New Client!")
         while True:
             msg = await websocket.recv()
             msg = str(msg).split(";")
