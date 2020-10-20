@@ -1,4 +1,6 @@
-# cooler_priester
+<p align="center">
+  <img src="https://raw.githubusercontent.com/andigandhi/cooler_priester/main/.github/github_logo.jpg">
+</p>
 
 Dies ist eine online Version des berliner Kartenspiels "Schwuler Priester" für die zweite Welle der Corona-Pandemie.
 
