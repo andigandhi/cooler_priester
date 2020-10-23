@@ -1,7 +1,7 @@
-import pathlib
+# import pathlib
 import random
 import asyncio
-import ssl
+# import ssl
 
 import websockets
 from math import floor
@@ -135,6 +135,7 @@ class Ablage:
 class Spieler:
     verdeckt, offen, karten = [], [], []
     name = ""
+    ip = None
     websocket = None
 
     def __init__(self, name, karten, socket):
@@ -142,6 +143,8 @@ class Spieler:
         self.offen = karten[3:6]
         self.karten = karten[6:9]
         self.websocket = socket
+        if socket:
+            self.ip = socket.remote_address
         self.name = name
 
     def __str__(self):
@@ -194,14 +197,14 @@ class Spiel:
 
     def addSpieler(self, name, socket):
         for spieler in self.spieler:
-            if spieler.name == name and False:
+            if spieler.name == name and False: # !!!
                 return
         self.spieler.append(Spieler(name, self.st.verteileKarten(), socket))
 
     def getSpielerByName(self, name):
-        for sp in self.spieler:
-            if sp.name == name:
-                return sp
+        for spieler in self.spieler:
+            if spieler.name == name:
+                return spieler
         return None
 
     async def benachrichtige(self):
@@ -255,6 +258,8 @@ class Spiel:
             if i != nr:
                 k += "\"" + self.spieler[i].name + "\", "
                 k += str(len(self.spieler[i].karten)) + ", " + str(self.spieler[i].offen) + ", "
+        if len(k) < 2:
+            return "[]"
         return k[:-2] + "]"
 
     def laeuft(self):
@@ -269,26 +274,33 @@ class Spiel:
 if __name__ == '__main__':
     sp = Spiel()
 
+    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # zertifikat = pathlib.Path(__file__).with_name("priesterCert.pem")
+    # ssl_context.load_cert_chain(zertifikat)
 
     async def socketLoop(websocket, path):
         while True:
             msg = await websocket.recv()
             msg = str(msg).split(";")
             print(msg)
-            if len(msg) > 1 and len(sp.spieler) == 4:
-                if sp.istdran(msg[0]):
+            if len(msg) > 1:
+                if len(sp.spieler) == 4 and sp.istdran(msg[0]):
                     if msg[1] == "nehme":
                         sp.nehme()
                     else:
                         sp.spielzug(int(msg[1]))
             else:
-                if sp.getSpielerByName(msg[0]):
-                    sp.getSpielerByName(msg[0]).websocket = websocket
+                spieler = sp.getSpielerByName(msg[0])
+                if spieler:
+                    print(str(websocket.remote_address) + "  " + str(spieler.ip))
+                    if spieler.ip is None or spieler.ip == websocket.remote_address[0]:
+                        spieler.websocket = websocket
+                        spieler.ip = websocket.remote_address[0]
                 elif len(sp.spieler) < 4:
                     sp.addSpieler(msg[0], websocket)
 
             await sp.benachrichtige()
 
-    start_server = websockets.serve(socketLoop, "localhost", 8442)
+    start_server = websockets.serve(socketLoop, "localhost", 8442)#, ssl=ssl_context)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
