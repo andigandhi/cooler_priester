@@ -15,3 +15,50 @@ body {
 	width: 9%;
 	cursor: pointer;
 }
+
+#hand {
+	width: 95%;
+}
+
+#stapel {
+	float: left;
+	width: 10%;
+	position: absolute;
+}
+
+#ablage {
+	margin-bottom: 2%;
+	cursor: pointer;
+}
+
+#letzteKarten {
+	float: center;
+}
+
+
+#startSeite {
+	text-align: center;
+	margin-top: 10%;
+}
+
+#nameText {
+	position: absolute;
+	margin-left: -17.5%;
+	margin-top: 12%;
+	width: 10%;
+	height: 22px;
+	font-size: 20px;
+	text-align: center;
+}
+
+#okBtn {
+	position: absolute;
+	margin-left: -17.5%;
+	margin-top: 14%;
+	width: 10%;
+	font-size: 20px;
+}
+
+h1 {
+	color: black;
+}
