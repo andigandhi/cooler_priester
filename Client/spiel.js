@@ -29,6 +29,7 @@ var nextCard = -1;
 var hand = [];
 var stapel = [];
 var offen = [];
+var verdeckt = [];
 var username = "";
 var andereSpieler = [];
 
@@ -40,6 +41,9 @@ function numberToFile(nr) {
 	"use strict";
 	if (!nr && nr!==0) {
 		return "x.png";
+	}
+	if (nr==="x") {
+		return "00.png";
 	}
 	var str = zahlen[Math.floor(nr/4)];
 	str += farben[nr%4];
@@ -73,9 +77,15 @@ function renderAblage() {
 
 function renderOffen() {
 	"use strict";
-	document.getElementById("letzteKarten1").src = "karten/"+numberToFile(offen[0]);
-	document.getElementById("letzteKarten2").src = "karten/"+numberToFile(offen[1]);
-	document.getElementById("letzteKarten3").src = "karten/"+numberToFile(offen[2]);
+	if (offen.length === 0) {
+		document.getElementById("letzteKarten1").src = "karten/"+numberToFile(verdeckt[0]);
+		document.getElementById("letzteKarten2").src = "karten/"+numberToFile(verdeckt[1]);
+		document.getElementById("letzteKarten3").src = "karten/"+numberToFile(verdeckt[2]);
+	} else {
+		document.getElementById("letzteKarten1").src = "karten/"+numberToFile(offen[0]);
+		document.getElementById("letzteKarten2").src = "karten/"+numberToFile(offen[1]);
+		document.getElementById("letzteKarten3").src = "karten/"+numberToFile(offen[2]);
+	}
 }
 
 function renderAndereSpieler() {
@@ -85,6 +95,18 @@ function renderAndereSpieler() {
 		str += andereSpieler[i*3] + " (" + andereSpieler[i*3+1] + " Karten in der Hand)<br>";
 		for (var j = 0; j<andereSpieler[i*3+2].length; j++) {
 			str += "<img src=\"karten/"+numberToFile(andereSpieler[i*3+2][j])+"\" alt=\"\" width=\"15%\">";
+		}
+		for (var j = andereSpieler[i*3+2].length; j<3; j++) {
+			str += "<img src=\"karten/x.png\" alt=\"\" width=\"15%\">";
+		}
+		document.getElementById("spieler"+i).innerHTML = str;
+	}
+	
+	for(i = andereSpieler.length/3; i<3; i++) {
+		var str = "";
+		str += "Warte auf Mitspieler...<br>";
+		for (var j = 0; j<3; j++) {
+			str += "<img src=\"karten/x.png\" alt=\"\" width=\"15%\">";
 		}
 		document.getElementById("spieler"+i).innerHTML = str;
 	}
@@ -104,13 +126,21 @@ function render() {
 		document.getElementById("hand").style.filter = "grayscale(70%)";
 		document.getElementById("letzteKarten").style.filter = "grayscale(70%)";
 	}
+	
+	if (nextCard === -1) {
+		document.getElementById("stapelKarte").src = "karten/x.png";
+	}
 }
 
 
 function ausspielen(nr, handNr) {
 	"use strict";
 	if (dran) {
-		webSocket.send(username+";"+handNr); 
+		if (offen.length === 0) {
+			webSocket.send(username+";-4"); 
+		} else {
+			webSocket.send(username+";"+handNr);
+		}
 	}
 	console.log(nr);
 	dran = !dran;
@@ -146,28 +176,10 @@ function login() {
 		nextCard = msg.Ziehen;
 		stapel = msg.Ablage;
 		offen = msg.Offen;
+		verdeckt = msg.Verdeckt;
 		andereSpieler = msg.Andere;
 		
 		render();
 	};
-	
-}
-
-function loginTest() {
-	"use strict";
-	username = document.getElementById("nameText").value;
-	document.getElementById("startSeite").style.display = "none";
-	document.getElementById("spielSeite").style.display = "inline";
-	
-	renderHand();
-		
-	dran = true;
-	hand = [46, 11, 39];
-	nextCard = 6;
-	stapel = [25,31,19,2];
-	offen = [41, 18, 21];
-	andereSpieler = ["bot0", 3, [47, 12, 28], "bot1", 3, [22, 17, 34], "bot2", 3, [1, 14, 13]];
-
-	render();
 	
 }

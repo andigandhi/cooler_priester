@@ -9,7 +9,6 @@ import asyncio
 import websockets
 from math import floor
 
-
 serverIP = "localhost"
 
 farben = {
@@ -111,16 +110,6 @@ class Stapel:
             ret.append(self.zieheKarte())
         return ret
 
-    # !!! Warum im Nachziehstapel??? Was habe ich hier gemacht????? WTF
-    def verbrennbar(self):
-        if len(self.karten) >= 4:
-            k = self.karten[-1]
-            for i in range(-2, -4, -1):
-                if k.zahl != self.karten[i].zahl:
-                    return False
-            return True
-        return False
-
 
 # Ablegestapel
 class Ablage:
@@ -144,6 +133,16 @@ class Ablage:
     # Füge Karte der Ablage hinzu
     def ablegen(self, karte):
         self.karten.append(karte)
+
+    # Ist Stapel verbrennbar (weil 4 gleiche Zahlen)?
+    def verbrennbar(self):
+        if len(self.karten) >= 4:
+            k = self.karten[-1]
+            for i in range(-2, -4, -1):
+                if k.zahl != self.karten[i].zahl:
+                    return False
+            return True
+        return False
 
 
 class Spieler:
@@ -190,7 +189,7 @@ class Spieler:
                     break
 
             # Verbrennen
-            if karte.zahl == 10 or stapel.verbrennbar():
+            if karte.zahl == 10 or ablage.verbrennbar():
                 ablage.karten = []
                 return False
 
@@ -206,12 +205,15 @@ class Spiel:
 
     # Bots (entfernen !!!)
     for i in range(3):
-        spieler.append(Spieler("bot"+str(i), st.verteileKarten(), None))
+        spieler.append(Spieler("bot" + str(i), st.verteileKarten(), None))
+    dran = 3
+    st.karten = st.karten[0:10]
+    # Bots Ende
 
     # Neuen Spieler hinzufügen
     def addSpieler(self, name, socket):
         for spieler in self.spieler:
-            if spieler.name == name and False: # !!!
+            if spieler.name == name:
                 return
         self.spieler.append(Spieler(name, self.st.verteileKarten(), socket))
 
@@ -234,8 +236,11 @@ class Spiel:
 
     # Nächster Spieler dran (incl. Aussetzen)
     def naechster(self):
-        # BUG!!! Mehr als ein 4 --> Mehr Spieler aussetzen
-        self.dran = (self.dran + 1 + (self.ablage.oben().zahl == 4)) % 4
+        aussetzen = 0
+        for i in range(min(len(self.ablage.karten), 3)):
+            if self.ablage.karten[i].zahl == 4:
+                aussetzen += 1
+        self.dran = (self.dran + 1 + aussetzen) % 4
 
     # Führe Spielzug aus
     def spielzug(self, karteId):
@@ -250,11 +255,20 @@ class Spiel:
                                                                    self.spieler[self.dran].karten)
         # Offene Karten: ID < 0
         else:
-            k = self.spieler[self.dran].offen[-1 - karteId]
-            spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
-                                                                   self.spieler[self.dran].offen)
+            if karteId == -4:
+                if not self.spieler[self.dran].spielzug(self.spieler[self.dran].verdeckt[-1], self.ablage, self.st,
+                                                 self.spieler[self.dran].verdeckt):
+                    self.nehme()
+                spielzugErfolgreich = True
+            elif (-1-karteId) < len(self.spieler[self.dran].offen):
+                k = self.spieler[self.dran].offen[-1 - karteId]
+                spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
+                                                                       self.spieler[self.dran].offen)
+            else:
+                return
         # Wenn Spielzug valide: nächster Spieler dran
         if spielzugErfolgreich:
+            return  # !!!
             self.naechster()
 
     # Nehme alle Karten von der Ablage
@@ -273,7 +287,10 @@ class Spiel:
         msg = addJson(msg, "Namen", str(self.spieler).replace("[", "[\"").replace("]", "\"]")).replace(", ", "\", \"")
         msg = addJson(msg, "Karten", str(self.spieler[nr].karten))
         msg = addJson(msg, "Offen", str(self.spieler[nr].offen))
-        msg = addJson(msg, "Verdeckt", str(self.spieler[nr].verdeckt[-1].id))
+        verdecktArr = []
+        for x in self.spieler[self.dran].verdeckt:
+            verdecktArr.append("x")
+        msg = addJson(msg, "Verdeckt", str(verdecktArr).replace("'", "\""))
         msg = addJson(msg, "Ablage", str(self.ablage.karten))
         msg = addJson(msg, "Andere", self.getAndereKarten(nr))
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
@@ -303,14 +320,17 @@ class Spiel:
             a *= (len(s.karten) + len(s.offen) + len(s.verdeckt))
         return a > 0
 
+
 def ladeSpiel(spielListe):
     for sp in spielListe:
         if sp.getSpielerByName:
             pass
     pass
 
+
 if __name__ == '__main__':
     sp = Spiel()
+
 
     # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     # zertifikat = pathlib.Path(__file__).with_name("priesterCert.pem")
@@ -365,6 +385,6 @@ if __name__ == '__main__':
 
 
     # Starte den Server
-    start_server = websockets.serve(socketLoop, serverIP, 8442)#, ssl=ssl_context)
+    start_server = websockets.serve(socketLoop, serverIP, 8442)  # , ssl=ssl_context)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
