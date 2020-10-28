@@ -136,7 +136,7 @@ function render() {
 function ausspielen(nr, handNr) {
 	"use strict";
 	if (dran) {
-		if (offen.length === 0) {
+		if (handNr <= 0 && offen.length === 0) {
 			webSocket.send(username+";-4"); 
 		} else {
 			webSocket.send(username+";"+handNr);

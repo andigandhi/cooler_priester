@@ -204,10 +204,11 @@ class Spiel:
     spieler = []
 
     # Bots (entfernen !!!)
-    for i in range(3):
-        spieler.append(Spieler("bot" + str(i), st.verteileKarten(), None))
-    dran = 3
-    st.karten = st.karten[0:10]
+    # for i in range(3):
+    #     spieler.append(Spieler("bot" + str(i), st.verteileKarten(), None))
+    # dran = 3
+    # st.karten = st.karten[0:10]
+
     # Bots Ende
 
     # Neuen Spieler hinzufügen
@@ -248,19 +249,23 @@ class Spiel:
         if karteId >= len(self.spieler[self.dran].karten):
             return False
 
+        spielzugErfolgreich = False
+
         # Normale Hand-Karten: ID >= 0
         if karteId >= 0:
             k = self.spieler[self.dran].karten[karteId]
             spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
                                                                    self.spieler[self.dran].karten)
-        # Offene Karten: ID < 0
+        # Offene (und verdeckte) Karten: ID < 0
         else:
             if karteId == -4:
-                if not self.spieler[self.dran].spielzug(self.spieler[self.dran].verdeckt[-1], self.ablage, self.st,
-                                                 self.spieler[self.dran].verdeckt):
-                    self.nehme()
-                spielzugErfolgreich = True
-            elif (-1-karteId) < len(self.spieler[self.dran].offen):
+                if len(self.spieler[self.dran].karten) == 0:
+                    if not self.spieler[self.dran].spielzug(self.spieler[self.dran].verdeckt[-1], self.ablage, self.st,
+                                                            self.spieler[self.dran].verdeckt):
+                        self.nehme()
+                        self.spieler[self.dran].karten.append(self.spieler[self.dran].verdeckt.pop())
+                    spielzugErfolgreich = True
+            elif (-1 - karteId) < len(self.spieler[self.dran].offen):
                 k = self.spieler[self.dran].offen[-1 - karteId]
                 spielzugErfolgreich = self.spieler[self.dran].spielzug(k, self.ablage, self.st,
                                                                        self.spieler[self.dran].offen)
@@ -268,7 +273,6 @@ class Spiel:
                 return
         # Wenn Spielzug valide: nächster Spieler dran
         if spielzugErfolgreich:
-            return  # !!!
             self.naechster()
 
     # Nehme alle Karten von der Ablage
