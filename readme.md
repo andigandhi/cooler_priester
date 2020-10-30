@@ -9,7 +9,8 @@ Das Backend ist komplett in Python geschrieben und kommuniziert über WebSockets
 <b>Achtung!</b> Das Spiel ist noch nicht vollkommen lauffähig!
 
 TODO:
-- Verdeckte Karten spielbar machen
-- Einige Bugfixes
+- 3 in Kombination mit anderen Karten ausspielbar machen
+- ...
+- Einiges an Bugfixes
 - Spielanleitung
 - Installationshinweise
