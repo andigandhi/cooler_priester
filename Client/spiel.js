@@ -171,6 +171,11 @@ function login() {
 	webSocket.onmessage = function (event) {
 		var msg = JSON.parse(event.data);
 		
+		if (msg.Message !== undefined) {
+			alert(msg.Message);
+			return;
+		}
+		
 		dran = msg.Dran;
 		hand = msg.Karten;
 		nextCard = msg.Ziehen;
