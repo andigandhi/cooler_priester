@@ -148,7 +148,7 @@ class Ablage:
 class Spieler:
     verdeckt, offen, karten = [], [], []
     name, ip, websocket = "", None, None
-    fertig = False
+    fertig, kartenGetauscht = False, False
 
     def __init__(self, name, karten, socket):
         self.verdeckt = karten[0:3]
@@ -197,6 +197,31 @@ class Spieler:
             return True
         return False
 
+    # Am Anfang Karten austauschbar machen
+    def kartenAustauschen(self, neueKarten):
+        if self.kartenGetauscht:
+            return
+
+        kartenArray = list(map(int, neueKarten.split(",")))
+
+        # Teste ob Karten nur vertauscht wurden oder ob gecheatet wurde
+        kartenArray2 = []
+        kartenArray3 = kartenArray.copy()
+        for k1 in self.offen+self.karten:
+            kartenArray2.append(k1.getID())
+        kartenArray2.sort()
+        kartenArray3.sort()
+        if kartenArray2 != kartenArray3:
+            return
+
+        # Tausche die Karten
+        for i in range(3):
+            self.offen[i] = Karte(kartenArray[i])
+        for i in range(3):
+            self.karten[i] = Karte(kartenArray[i+3])
+
+        self.kartenGetauscht = True
+
 
 class Spiel:
     st = Stapel()
@@ -242,16 +267,20 @@ class Spiel:
 
     # Nächster Spieler dran (incl. Aussetzen)
     def naechster(self):
-        aussetzen = 0
+        aussetzen = 1
 
         # Aussetzen durch 4er
         for i in range(min(len(self.ablage.karten), 3)):
             if self.ablage.karten[i].zahl == 4:
                 aussetzen += 1
 
+        print(aussetzen)
+
         # Fertige Spieler überspringen
         for i in range(aussetzen):
+            self.dran = (self.dran + 1) % 4
             while self.spieler[self.dran].fertig:
+                print("+1")
                 self.dran = (self.dran + 1) % 4
 
         # self.dran = (self.dran + 1 + aussetzen) % 4 (Alte Version)
@@ -315,7 +344,7 @@ class Spiel:
         msg = addJson(msg, "Andere", self.getAndereKarten(nr))
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
-        print(msg)
+        # print(msg)
         return msg
 
     # Offene Karten der anderen Spieler
@@ -379,8 +408,13 @@ if __name__ == '__main__':
 
             # Spielzüge bestehen aus Name + Spielzug
             if len(msg) > 1:
+                if msg[1] == "kartenTausch":
+                    for spieler in sp.spieler:
+                        if spieler.name == msg[0]:
+                            spieler.kartenAustauschen(msg[2])
+                            break
                 # Spielzug nur ausführen wenn alle Spieler da und Spieler dran
-                if len(sp.spieler) == 4 and sp.istdran(msg[0]):
+                elif len(sp.spieler) == 4 and sp.istdran(msg[0]):
                     # Karten aufnehmen weil anderer Zug nicht möglich
                     if msg[1] == "nehme":
                         sp.nehme()
@@ -397,6 +431,8 @@ if __name__ == '__main__':
                     if spieler.ip is None or spieler.ip == websocket.remote_address[0]:
                         spieler.websocket = websocket
                         spieler.ip = websocket.remote_address[0]
+                    else:
+                        return
                 # Wenn Spieler neu --> zum letzten Spiel hinzufügen
                 elif len(sp.spieler) < 4:
                     sp.addSpieler(msg[0], websocket)

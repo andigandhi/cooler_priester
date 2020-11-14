@@ -25,6 +25,7 @@ var zahlen = [
 ];
 
 var dran = true;
+var ausgetauscht = false;
 var nextCard = -1;
 var hand = [];
 var stapel = [];
@@ -119,7 +120,7 @@ function render() {
 	renderOffen();
 	renderAndereSpieler();
 	
-	if (dran) {
+	if (dran || !ausgetauscht) {
 		document.getElementById("hand").style.filter = "grayscale(0%)";
 		document.getElementById("letzteKarten").style.filter = "grayscale(0%)";
 	} else {
@@ -135,6 +136,19 @@ function render() {
 
 function ausspielen(nr, handNr) {
 	"use strict";
+	
+	if (!ausgetauscht) {
+		if (handNr >= 0) {
+			var k = offen[0];
+			offen[0] = offen[1];
+			offen[1] = offen[2];
+			offen[2] = hand[handNr];
+			hand[handNr] = k;
+		}
+		render();
+		return;
+	}
+	
 	if (dran) {
 		if (handNr <= 0 && offen.length === 0) {
 			webSocket.send(username+";-4"); 
@@ -151,7 +165,20 @@ function aufnehmen() {
 	webSocket.send(username+";nehme"); 
 }
 
-
+function austauschen() {
+	"use strict";
+	var str = "";
+	for (var i = 0;i<3;i++) {
+		str += offen[i] + ",";
+	}
+	for (var i = 0;i<3;i++) {
+		str += hand[i] + ",";
+	}
+	str = str.substring(0,str.length-1);
+	webSocket.send(username+";kartenTausch;"+str); 
+	ausgetauscht = true;
+	document.getElementById("austauschDiv").style.display = "none";
+}
 
 function login() {
 	"use strict";
