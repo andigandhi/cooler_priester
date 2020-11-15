@@ -2,8 +2,6 @@
   <img src="https://raw.githubusercontent.com/andigandhi/cooler_priester/main/.github/github_logo.jpg">
 </p>
 
-## Beschreibung
-
 Dies ist eine online Version des Berliner Kartenspiels "Schwuler Priester" für die zweite Welle der Corona-Pandemie.
 Ziel des Spiels ist es, als Erster alle Karten ablegen zu können.
 
@@ -19,6 +17,5 @@ Das Backend ist komplett in Python geschrieben und kommuniziert über WebSockets
 ## TODO:
 - Bedienung vereinfachen
 - Spiel bei Beendigung zurücksetzen
-
 - Einiges an Bugfixes
 - Spielanleitung!!
