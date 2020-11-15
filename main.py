@@ -175,6 +175,10 @@ class Spieler:
             ablage.ablegen(karte)
             karten.remove(karte)
 
+            # Drei ist unsichtbar und kann mehrfach gelegt werden
+            if karte.zahl == 3:
+                return False
+
             # mehrere Karten ablegen
             for k in karten:
                 if k.zahl == karte.zahl:
@@ -380,11 +384,6 @@ def ladeSpiel(spielListe):
 if __name__ == '__main__':
     sp = Spiel()
 
-
-    # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    # zertifikat = pathlib.Path(__file__).with_name("priesterCert.pem")
-    # ssl_context.load_cert_chain(zertifikat)
-
     async def socketLoop(websocket, path):
         global sp
         print("Neue Verbindung")
@@ -418,6 +417,9 @@ if __name__ == '__main__':
                     # Karten aufnehmen weil anderer Zug nicht möglich
                     if msg[1] == "nehme":
                         sp.nehme()
+                    # Spieler kann nach einer ausgespielten 3 auch weiter sagen
+                    elif msg[1] == "weiter":
+                        sp.naechster()
                     # bestimmte Karte ausspielen
                     else:
                         sp.spielzug(int(msg[1]))
@@ -445,6 +447,6 @@ if __name__ == '__main__':
 
 
     # Starte den Server
-    start_server = websockets.serve(socketLoop, serverIP, 8442)  # , ssl=ssl_context)
+    start_server = websockets.serve(socketLoop, serverIP, 8442)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

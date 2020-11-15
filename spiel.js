@@ -134,9 +134,24 @@ function render() {
 }
 
 
+function startAusspielTimer() {
+	"use strict";
+	var secs = 5;
+	document.getElementById("weiterInDiv").style.display = "block";
+	var x = setInterval(function() {
+		document.getElementById("weiterInDiv").innerHTML = "Weiter in "+secs+"s ...";
+		secs--;
+		if (secs < 0) {
+			document.getElementById("weiterInDiv").style.display = "none";
+			webSocket.send(username+";weiter");
+			clearInterval(x);
+		}
+	}, 1000);
+}
+
+
 function ausspielen(nr, handNr) {
 	"use strict";
-	
 	if (!ausgetauscht) {
 		if (handNr >= 0) {
 			var k = offen[0];
@@ -157,7 +172,13 @@ function ausspielen(nr, handNr) {
 		}
 	}
 	console.log(nr);
-	dran = !dran;
+	
+	// Drei gleichzeitig ausspielbar mit anderen Karten
+	if (nr<4 || nr>7) {
+			dran = !dran;
+	} else {
+		startAusspielTimer();
+	}
 }
 
 function aufnehmen() {
