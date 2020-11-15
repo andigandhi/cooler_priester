@@ -17,8 +17,8 @@ Das Backend ist komplett in Python geschrieben und kommuniziert über WebSockets
 
 
 ## TODO:
-- 3 in Kombination mit anderen Karten ausspielbar machen
+- Bedienung vereinfachen
 - Spiel bei Beendigung zurücksetzen
 
 - Einiges an Bugfixes
-- Spielanleitung
+- Spielanleitung!!
