@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# import pathlib
+import pathlib
 import random
 import asyncio
-# import ssl
+import ssl
 
 import websockets
 from math import floor
@@ -447,6 +447,11 @@ if __name__ == '__main__':
 
 
     # Starte den Server
-    start_server = websockets.serve(socketLoop, serverIP, 8442)
+    #ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    #localhost_pem = pathlib.Path(__file__).with_name("cert.pem")
+    #key = pathlib.Path(__file__).with_name("key.pem")
+    #ssl_context.load_cert_chain(localhost_pem, keyfile=key)
+
+    start_server = websockets.serve(socketLoop, serverIP, 8442)#, ssl=ssl_context)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

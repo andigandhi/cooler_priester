@@ -43,9 +43,9 @@ body {
 
 #nameText {
 	position: absolute;
-	margin-left: -17.5%;
+	margin-left: -22.5%;
 	margin-top: 12%;
-	width: 10%;
+	width: 15%;
 	height: 22px;
 	font-size: 20px;
 	text-align: center;
@@ -53,9 +53,9 @@ body {
 
 #okBtn {
 	position: absolute;
-	margin-left: -17.5%;
-	margin-top: 14%;
-	width: 10%;
+	margin-left: -7%;
+	margin-top: 12%;
+	width: 5%;
 	font-size: 20px;
 }
 

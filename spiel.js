@@ -1,4 +1,4 @@
-var serverIP = "localhost";
+var serverIP = "andigandhi.ddns.net";
 
 
 var farben = [
@@ -93,7 +93,7 @@ function renderAndereSpieler() {
 	"use strict";
 	for(var i = 0; i<andereSpieler.length/3; i++) {
 		var str = "";
-		str += andereSpieler[i*3] + " (" + andereSpieler[i*3+1] + " Karten in der Hand)<br>";
+		str += andereSpieler[i*3] + (andereSpieler[i*3].toLowerCase().includes("hanna")?" (Imposter)":"") + " (" + andereSpieler[i*3+1] + " Karten in der Hand)<br>";
 		for (var j = 0; j<andereSpieler[i*3+2].length; j++) {
 			str += "<img src=\"karten/"+numberToFile(andereSpieler[i*3+2][j])+"\" alt=\"\" width=\"15%\">";
 		}
@@ -203,10 +203,9 @@ function austauschen() {
 
 function login() {
 	"use strict";
-	username = document.getElementById("nameText").value;
+	username = document.getElementById("nameText").value.replace(/[^a-zA-Z]+/g, '');;
 	document.getElementById("startSeite").style.display = "none";
 	document.getElementById("spielSeite").style.display = "inline";
-	//username = prompt("Wie ist denn bitte dein Name?", "");
 	
 	webSocket = new WebSocket('ws://'+serverIP+':8442');
 	
@@ -231,6 +230,11 @@ function login() {
 		offen = msg.Offen;
 		verdeckt = msg.Verdeckt;
 		andereSpieler = msg.Andere;
+		
+		if (ausgetauscht) {
+			hand = msg.Karten;
+			offen = msg.Offen;
+		}
 		
 		render();
 	};
