@@ -10,6 +10,8 @@ import websockets
 from math import floor
 
 serverIP = "localhost"
+secure = False
+debug = False
 
 farben = {
     0: "Herz",
@@ -138,7 +140,7 @@ class Ablage:
     def verbrennbar(self):
         if len(self.karten) >= 4:
             k = self.karten[-1]
-            for i in range(-2, -4, -1):
+            for i in range(-2, -5, -1):
                 if k.zahl != self.karten[i].zahl:
                     return False
             return True
@@ -168,22 +170,26 @@ class Spieler:
     def spielzug(self, karte, ablage, stapel, karten):
 
         if karte not in self.karten and len(self.karten) != 0:
-            return False
+            return 0
 
         # Spieler besitzt Karte und darf sie ausspielen
         if karte.spielbar(ablage.oben()):
             ablage.ablegen(karte)
             karten.remove(karte)
 
+            anzahlGespielteKarten = 1
+
             # Drei ist unsichtbar und kann mehrfach gelegt werden
             if karte.zahl == 3:
-                return False
+                return 0
 
             # mehrere Karten ablegen
             for k in karten:
                 if k.zahl == karte.zahl:
                     ablage.ablegen(k)
                     karten.remove(k)
+
+                    anzahlGespielteKarten += 1
 
             # Nachziehen
             while len(self.karten) < 3:
@@ -196,10 +202,10 @@ class Spieler:
             # Verbrennen
             if karte.zahl == 10 or ablage.verbrennbar():
                 ablage.karten = []
-                return False
+                return 0
 
-            return True
-        return False
+            return anzahlGespielteKarten
+        return 0
 
     # Am Anfang Karten austauschbar machen
     def kartenAustauschen(self, neueKarten):
@@ -270,21 +276,20 @@ class Spiel:
                     self.spieler[i].websocket = None
 
     # Nächster Spieler dran (incl. Aussetzen)
-    def naechster(self):
+    def naechster(self, kartenZahl):
         aussetzen = 1
 
         # Aussetzen durch 4er
-        for i in range(min(len(self.ablage.karten), 3)):
-            if self.ablage.karten[i].zahl == 4:
+        for i in range(kartenZahl):
+            if self.ablage.karten[-1-i].zahl == 4:
                 aussetzen += 1
-
-        print(aussetzen)
+            else:
+                break
 
         # Fertige Spieler überspringen
         for i in range(aussetzen):
             self.dran = (self.dran + 1) % 4
             while self.spieler[self.dran].fertig:
-                print("+1")
                 self.dran = (self.dran + 1) % 4
 
         # self.dran = (self.dran + 1 + aussetzen) % 4 (Alte Version)
@@ -322,7 +327,7 @@ class Spiel:
 
         # Wenn Spielzug valide: nächster Spieler dran
         if spielzugErfolgreich:
-            self.naechster()
+            self.naechster(spielzugErfolgreich)
 
     # Nehme alle Karten von der Ablage
     def nehme(self):
@@ -336,7 +341,7 @@ class Spiel:
     # Erstelle JSON Text für Socket Nachricht
     def socketNachricht(self, nr):
         msg = "{\n"
-        msg = addJson(msg, "Dran", str(self.istdran(self.spieler[nr].name)).lower())
+        msg = addJson(msg, "Dran", "\"" + self.spieler[self.dran].name + "\"")
         msg = addJson(msg, "Namen", str(self.spieler).replace("[", "[\"").replace("]", "\"]")).replace(", ", "\", \"")
         msg = addJson(msg, "Karten", str(self.spieler[nr].karten))
         msg = addJson(msg, "Offen", str(self.spieler[nr].offen))
@@ -348,7 +353,9 @@ class Spiel:
         msg = addJson(msg, "Andere", self.getAndereKarten(nr))
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
-        # print(msg)
+
+        print(self.spieler[nr].name, ":\t", str(self.spieler[nr].karten), str(self.spieler[nr].offen))
+
         return msg
 
     # Offene Karten der anderen Spieler
@@ -357,7 +364,10 @@ class Spiel:
         for i in range(len(self.spieler)):
             if i != nr:
                 if len(self.spieler[i].offen) == 0:
-                    offeneKarten = str(self.spieler[i].verdeckt)
+                    verdecktArr = []
+                    for x in self.spieler[self.dran].verdeckt:
+                        verdecktArr.append("x")
+                    offeneKarten = str(verdecktArr)
                 else:
                     offeneKarten = str(self.spieler[i].offen)
                 k += "\"" + self.spieler[i].name + "\", "
@@ -384,11 +394,14 @@ def ladeSpiel(spielListe):
 if __name__ == '__main__':
     sp = Spiel()
 
+    if debug:  # !!!
+        sp.st.karten = sp.st.karten[0:36]
+
     async def socketLoop(websocket, path):
         global sp
         print("Neue Verbindung")
         spieler = None
-        sp = Spiel()
+        # sp = Spiel()
 
         # Führe Schleife aus bis Spieler die Verbindung trennt
         while True:
@@ -419,7 +432,7 @@ if __name__ == '__main__':
                         sp.nehme()
                     # Spieler kann nach einer ausgespielten 3 auch weiter sagen
                     elif msg[1] == "weiter":
-                        sp.naechster()
+                        sp.naechster(0)
                     # bestimmte Karte ausspielen
                     else:
                         sp.spielzug(int(msg[1]))
@@ -447,11 +460,18 @@ if __name__ == '__main__':
 
 
     # Starte den Server
-    #ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    #localhost_pem = pathlib.Path(__file__).with_name("cert.pem")
-    #key = pathlib.Path(__file__).with_name("key.pem")
-    #ssl_context.load_cert_chain(localhost_pem, keyfile=key)
 
-    start_server = websockets.serve(socketLoop, serverIP, 8442)#, ssl=ssl_context)
+    # Mit SSL Verschlüsselung
+    if secure:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        localhost_pem = pathlib.Path(__file__).with_name("cert.pem")
+        key = pathlib.Path(__file__).with_name("key.pem")
+        ssl_context.load_cert_chain(localhost_pem, keyfile=key)
+        start_server = websockets.serve(socketLoop, serverIP, 8442, ssl=ssl_context)
+
+    # Ohne SSL Verschlüsselung
+    else:
+        start_server = websockets.serve(socketLoop, serverIP, 8442)
+
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

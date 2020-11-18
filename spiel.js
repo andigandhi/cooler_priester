@@ -1,4 +1,4 @@
-var serverIP = "andigandhi.ddns.net";
+var serverIP = "localhost";
 
 
 var farben = [
@@ -25,6 +25,7 @@ var zahlen = [
 ];
 
 var dran = true;
+var dranName = "";
 var ausgetauscht = false;
 var nextCard = -1;
 var hand = [];
@@ -92,8 +93,10 @@ function renderOffen() {
 function renderAndereSpieler() {
 	"use strict";
 	for(var i = 0; i<andereSpieler.length/3; i++) {
-		var str = "";
-		str += andereSpieler[i*3] + (andereSpieler[i*3].toLowerCase().includes("hanna")?" (Imposter)":"") + " (" + andereSpieler[i*3+1] + " Karten in der Hand)<br>";
+		var str = (andereSpieler[i*3] === dranName?"<b>":"");
+		str += andereSpieler[i*3] + (andereSpieler[i*3].toLowerCase().includes("hann")?" (kinda sus)":"");
+		str += (andereSpieler[i*3] === dranName?"</b>":"");
+		str += " <b>" + andereSpieler[i*3+1] + "</b><br>";
 		for (var j = 0; j<andereSpieler[i*3+2].length; j++) {
 			str += "<img src=\"karten/"+numberToFile(andereSpieler[i*3+2][j])+"\" alt=\"\" width=\"15%\">";
 		}
@@ -165,7 +168,7 @@ function ausspielen(nr, handNr) {
 	}
 	
 	if (dran) {
-		if (handNr <= 0 && offen.length === 0) {
+		if (handNr < 0 && offen.length === 0) {
 			webSocket.send(username+";-4"); 
 		} else {
 			webSocket.send(username+";"+handNr);
@@ -203,7 +206,7 @@ function austauschen() {
 
 function login() {
 	"use strict";
-	username = document.getElementById("nameText").value.replace(/[^a-zA-Z]+/g, '');;
+	username = document.getElementById("nameText").value.replace(/[^a-zA-Z]+/g, '');
 	document.getElementById("startSeite").style.display = "none";
 	document.getElementById("spielSeite").style.display = "inline";
 	
@@ -223,15 +226,14 @@ function login() {
 			return;
 		}
 		
-		dran = msg.Dran;
-		hand = msg.Karten;
+		dran = (msg.Dran === username);
+		dranName = msg.Dran;
 		nextCard = msg.Ziehen;
 		stapel = msg.Ablage;
-		offen = msg.Offen;
 		verdeckt = msg.Verdeckt;
 		andereSpieler = msg.Andere;
 		
-		if (ausgetauscht) {
+		if (ausgetauscht || hand.length === 0 ) {
 			hand = msg.Karten;
 			offen = msg.Offen;
 		}
