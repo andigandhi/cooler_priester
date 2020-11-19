@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pathlib
 import random
 import asyncio
 import ssl
@@ -9,14 +8,22 @@ import ssl
 import websockets
 from math import floor
 
+# ###### CONFIG ######
+
 serverIP = "localhost"
-secure = False
 debug = False
 
+secure = True
+SSLchain = "/home/pi/ssl/fullchain.pem"
+SSLkey = "/home/pi/ssl/key.pem"
+
+# ###### ###### ######
+
+
 farben = {
-    0: "Herz",
-    1: "Kreuz",
-    2: "Karo",
+    0: "Kreuz",
+    1: "Karo",
+    2: "Herz",
     3: "Pik",
 }
 
@@ -150,7 +157,7 @@ class Ablage:
 class Spieler:
     verdeckt, offen, karten = [], [], []
     name, ip, websocket = "", None, None
-    fertig, kartenGetauscht = False, False
+    fertig, kartenGetauscht = False, debug
 
     def __init__(self, name, karten, socket):
         self.verdeckt = karten[0:3]
@@ -184,7 +191,7 @@ class Spieler:
                 return 0
 
             # mehrere Karten ablegen
-            for k in karten:
+            for k in list(karten):
                 if k.zahl == karte.zahl:
                     ablage.ablegen(k)
                     karten.remove(k)
@@ -192,12 +199,7 @@ class Spieler:
                     anzahlGespielteKarten += 1
 
             # Nachziehen
-            while len(self.karten) < 3:
-                k = stapel.zieheKarte()
-                if k is not None and k.id != -1:
-                    self.karten.append(k)
-                else:
-                    break
+            self.nachziehen(stapel)
 
             # Verbrennen
             if karte.zahl == 10 or ablage.verbrennbar():
@@ -206,6 +208,14 @@ class Spieler:
 
             return anzahlGespielteKarten
         return 0
+
+    def nachziehen(self, stapel):
+        while len(self.karten) < 3:
+            k = stapel.zieheKarte()
+            if k is not None and k.id != -1:
+                self.karten.append(k)
+            else:
+                break
 
     # Am Anfang Karten austauschbar machen
     def kartenAustauschen(self, neueKarten):
@@ -239,20 +249,17 @@ class Spiel:
     dran = 0
     spieler = []
 
-    # Bots (entfernen !!!)
-    # for i in range(3):
-    #     spieler.append(Spieler("bot" + str(i), st.verteileKarten(), None))
-    # dran = 3
-    # st.karten = st.karten[0:10]
-
-    # Bots Ende
-
     # Neuen Spieler hinzufügen
     def addSpieler(self, name, socket):
         for spieler in self.spieler:
-            if spieler.name == name:
+            if spieler.name == name and not debug:
                 return
+
         self.spieler.append(Spieler(name, self.st.verteileKarten(), socket))
+
+        if debug and len(self.spieler) == 1:
+            for i in range(3):
+                self.addSpieler(name, socket)
 
     # Spieler Objekt finden über Spieler-Name
     def getSpielerByName(self, name):
@@ -264,7 +271,9 @@ class Spiel:
     # Alle Spieler benachrichtigen
     async def benachrichtige(self, spielerFertig = -1):
         for i in range(len(self.spieler)):
-            if self.spieler[i].websocket:
+            if debug and self.dran != i:
+                pass
+            elif self.spieler[i].websocket:
                 try:
                     if spielerFertig == -1:
                         await self.spieler[i].websocket.send(self.socketNachricht(i))
@@ -280,7 +289,7 @@ class Spiel:
         aussetzen = 1
 
         # Aussetzen durch 4er
-        for i in range(kartenZahl):
+        for i in range(min(kartenZahl, len(self.ablage.karten))):
             if self.ablage.karten[-1-i].zahl == 4:
                 aussetzen += 1
             else:
@@ -292,7 +301,6 @@ class Spiel:
             while self.spieler[self.dran].fertig:
                 self.dran = (self.dran + 1) % 4
 
-        # self.dran = (self.dran + 1 + aussetzen) % 4 (Alte Version)
 
     # Führe Spielzug aus
     def spielzug(self, karteId):
@@ -315,7 +323,8 @@ class Spiel:
                 if len(spielerdran.karten) == 0:
                     if not spielerdran.spielzug(spielerdran.verdeckt[-1], self.ablage, self.st, spielerdran.verdeckt):
                         self.nehme()
-                        spielerdran.karten.append(spielerdran.verdeckt.pop())
+                        if len(spielerdran.verdeckt) > 0:
+                            spielerdran.karten.append(spielerdran.verdeckt.pop())
                     spielzugErfolgreich = True
             elif (-1 - karteId) < len(spielerdran.offen):
                 k = spielerdran.offen[-1 - karteId]
@@ -354,7 +363,9 @@ class Spiel:
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
 
-        print(self.spieler[nr].name, ":\t", str(self.spieler[nr].karten), str(self.spieler[nr].offen))
+        print(msg)
+
+        print(self.spieler[nr].name, self.spieler[nr].karten[0])
 
         return msg
 
@@ -367,7 +378,7 @@ class Spiel:
                     verdecktArr = []
                     for x in self.spieler[self.dran].verdeckt:
                         verdecktArr.append("x")
-                    offeneKarten = str(verdecktArr)
+                    offeneKarten = str(verdecktArr).replace("'", "\"")
                 else:
                     offeneKarten = str(self.spieler[i].offen)
                 k += "\"" + self.spieler[i].name + "\", "
@@ -394,7 +405,7 @@ def ladeSpiel(spielListe):
 if __name__ == '__main__':
     sp = Spiel()
 
-    if debug:  # !!!
+    if debug:
         sp.st.karten = sp.st.karten[0:36]
 
     async def socketLoop(websocket, path):
@@ -464,9 +475,7 @@ if __name__ == '__main__':
     # Mit SSL Verschlüsselung
     if secure:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        localhost_pem = pathlib.Path(__file__).with_name("cert.pem")
-        key = pathlib.Path(__file__).with_name("key.pem")
-        ssl_context.load_cert_chain(localhost_pem, keyfile=key)
+        ssl_context.load_cert_chain(SSLchain, keyfile=SSLkey)
         start_server = websockets.serve(socketLoop, serverIP, 8442, ssl=ssl_context)
 
     # Ohne SSL Verschlüsselung

@@ -1,5 +1,5 @@
 var serverIP = "localhost";
-
+var secure = true;
 
 var farben = [
 	"C",
@@ -210,7 +210,7 @@ function login() {
 	document.getElementById("startSeite").style.display = "none";
 	document.getElementById("spielSeite").style.display = "inline";
 	
-	webSocket = new WebSocket('ws://'+serverIP+':8442');
+	webSocket = new WebSocket('ws'+(secure?'s':'')+'://'+serverIP+':8442');
 	
 	renderHand();
 	
@@ -228,6 +228,7 @@ function login() {
 		
 		dran = (msg.Dran === username);
 		dranName = msg.Dran;
+		console.log()
 		nextCard = msg.Ziehen;
 		stapel = msg.Ablage;
 		verdeckt = msg.Verdeckt;
