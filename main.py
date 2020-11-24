@@ -355,7 +355,7 @@ class Spiel:
         msg = addJson(msg, "Karten", str(self.spieler[nr].karten))
         msg = addJson(msg, "Offen", str(self.spieler[nr].offen))
         verdecktArr = []
-        for x in self.spieler[self.dran].verdeckt:
+        for x in self.spieler[nr].verdeckt:
             verdecktArr.append("x")
         msg = addJson(msg, "Verdeckt", str(verdecktArr).replace("'", "\""))
         msg = addJson(msg, "Ablage", str(self.ablage.karten))
@@ -376,7 +376,7 @@ class Spiel:
             if i != nr:
                 if len(self.spieler[i].offen) == 0:
                     verdecktArr = []
-                    for x in self.spieler[self.dran].verdeckt:
+                    for x in self.spieler[nr].verdeckt:
                         verdecktArr.append("x")
                     offeneKarten = str(verdecktArr).replace("'", "\"")
                 else:
