@@ -365,8 +365,6 @@ class Spiel:
 
         print(msg)
 
-        print(self.spieler[nr].name, self.spieler[nr].karten[0])
-
         return msg
 
     # Offene Karten der anderen Spieler
@@ -376,7 +374,7 @@ class Spiel:
             if i != nr:
                 if len(self.spieler[i].offen) == 0:
                     verdecktArr = []
-                    for x in self.spieler[nr].verdeckt:
+                    for x in self.spieler[i].verdeckt:
                         verdecktArr.append("x")
                     offeneKarten = str(verdecktArr).replace("'", "\"")
                 else:

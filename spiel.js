@@ -174,7 +174,6 @@ function ausspielen(nr, handNr) {
 			webSocket.send(username+";"+handNr);
 		}
 	}
-	console.log(nr);
 	
 	// Drei gleichzeitig ausspielbar mit anderen Karten
 	if (nr<4 || nr>7) {
@@ -220,7 +219,7 @@ function login() {
 	
 	webSocket.onmessage = function (event) {
 		var msg = JSON.parse(event.data);
-		
+
 		if (msg.Message !== undefined) {
 			alert(msg.Message);
 			return;
@@ -228,7 +227,6 @@ function login() {
 		
 		dran = (msg.Dran === username);
 		dranName = msg.Dran;
-		console.log()
 		nextCard = msg.Ziehen;
 		stapel = msg.Ablage;
 		verdeckt = msg.Verdeckt;
