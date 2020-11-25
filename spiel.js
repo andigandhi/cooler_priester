@@ -1,5 +1,5 @@
 var serverIP = "localhost";
-var secure = true;
+var secure = false;
 
 var farben = [
 	"C",

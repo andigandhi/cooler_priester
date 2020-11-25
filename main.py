@@ -12,7 +12,7 @@ from math import floor
 
 serverIP = "localhost"
 
-secure = True
+secure = False
 SSLchain = "/home/pi/ssl/fullchain.pem"
 SSLkey = "/home/pi/ssl/key.pem"
 
@@ -255,6 +255,8 @@ class Spiel:
         self.dran = 0
         self.spieler = []
 
+        print("Spiel zurückgesetzt!")
+
     # Neuen Spieler hinzufügen
     def addSpieler(self, name, socket):
         for spieler in self.spieler:
@@ -422,9 +424,11 @@ if __name__ == '__main__':
             try:
                 msg = await websocket.recv()
             except websockets.ConnectionClosed as exc:
-                print("Verbindung geschlossen!")
                 if spieler:
+                    print("Verbindung geschlossen!")
                     spieler.websocket = None
+                    if not sp.laeuft():
+                        sp = Spiel();
                 return
 
             # Trenne Nachricht in verschiedene Teile
