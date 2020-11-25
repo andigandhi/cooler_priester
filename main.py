@@ -11,7 +11,6 @@ from math import floor
 # ###### CONFIG ######
 
 serverIP = "localhost"
-debug = False
 
 secure = True
 SSLchain = "/home/pi/ssl/fullchain.pem"
@@ -106,7 +105,7 @@ class Stapel:
             return self.karten.pop()
         return Karte(-1)
 
-    # VERALTET!!! Gib die oberste Karte der Ablage ohne sie zu nehmen
+    # Gib die oberste Karte der Ablage ohne sie zu nehmen
     def oben(self):
         if len(self.karten) > 0:
             return self.karten[-1].id
@@ -157,7 +156,7 @@ class Ablage:
 class Spieler:
     verdeckt, offen, karten = [], [], []
     name, ip, websocket = "", None, None
-    fertig, kartenGetauscht = False, debug
+    fertig, kartenGetauscht = False, False
 
     def __init__(self, name, karten, socket):
         self.verdeckt = karten[0:3]
@@ -191,12 +190,13 @@ class Spieler:
                 return 0
 
             # mehrere Karten ablegen
-            for k in list(karten):
-                if k.zahl == karte.zahl:
-                    ablage.ablegen(k)
-                    karten.remove(k)
+            if karten != self.verdeckt:
+                for k in list(karten):
+                    if k.zahl == karte.zahl:
+                        ablage.ablegen(k)
+                        karten.remove(k)
 
-                    anzahlGespielteKarten += 1
+                        anzahlGespielteKarten += 1
 
             # Nachziehen
             self.nachziehen(stapel)
@@ -227,7 +227,7 @@ class Spieler:
         # Teste ob Karten nur vertauscht wurden oder ob gecheatet wurde
         kartenArray2 = []
         kartenArray3 = kartenArray.copy()
-        for k1 in self.offen+self.karten:
+        for k1 in self.offen + self.karten:
             kartenArray2.append(k1.getID())
         kartenArray2.sort()
         kartenArray3.sort()
@@ -238,7 +238,7 @@ class Spieler:
         for i in range(3):
             self.offen[i] = Karte(kartenArray[i])
         for i in range(3):
-            self.karten[i] = Karte(kartenArray[i+3])
+            self.karten[i] = Karte(kartenArray[i + 3])
 
         self.kartenGetauscht = True
 
@@ -249,15 +249,21 @@ class Spiel:
     dran = 0
     spieler = []
 
+    def __init__(self):
+        self.st = Stapel()
+        self.ablage = Ablage()
+        self.dran = 0
+        self.spieler = []
+
     # Neuen Spieler hinzufügen
     def addSpieler(self, name, socket):
         for spieler in self.spieler:
-            if spieler.name == name and not debug:
+            if spieler.name == name:
                 return
 
         self.spieler.append(Spieler(name, self.st.verteileKarten(), socket))
 
-        if debug and len(self.spieler) == 1:
+        if len(self.spieler) == 1:
             for i in range(3):
                 self.addSpieler(name, socket)
 
@@ -269,16 +275,14 @@ class Spiel:
         return None
 
     # Alle Spieler benachrichtigen
-    async def benachrichtige(self, spielerFertig = -1):
+    async def benachrichtige(self, spielerFertig=-1):
         for i in range(len(self.spieler)):
-            if debug and self.dran != i:
-                pass
-            elif self.spieler[i].websocket:
+            if self.spieler[i].websocket:
                 try:
                     if spielerFertig == -1:
                         await self.spieler[i].websocket.send(self.socketNachricht(i))
                     else:
-                        await self.spieler[i].websocket.send("{\n\tMessage: \""+self.spieler[self.dran].name +
+                        await self.spieler[i].websocket.send("{\n\tMessage: \"" + self.spieler[spielerFertig].name +
                                                              " ist fertig!\"\n}")
                 except websockets.ConnectionClosed as exc:
                     print("Verbindung zu " + self.spieler[i].name + " geschlossen!")
@@ -290,7 +294,7 @@ class Spiel:
 
         # Aussetzen durch 4er
         for i in range(min(kartenZahl, len(self.ablage.karten))):
-            if self.ablage.karten[-1-i].zahl == 4:
+            if self.ablage.karten[-1 - i].zahl == 4:
                 aussetzen += 1
             else:
                 break
@@ -300,7 +304,6 @@ class Spiel:
             self.dran = (self.dran + 1) % 4
             while self.spieler[self.dran].fertig:
                 self.dran = (self.dran + 1) % 4
-
 
     # Führe Spielzug aus
     def spielzug(self, karteId):
@@ -319,12 +322,15 @@ class Spiel:
             spielzugErfolgreich = spielerdran.spielzug(k, self.ablage, self.st, spielerdran.karten)
         # Offene (und verdeckte) Karten: ID < 0
         else:
+            # Ausspielen einer verdeckten Karte...
             if karteId == -4:
+                # ...nur möglich wenn keine Karten in der Hand sind
                 if len(spielerdran.karten) == 0:
+                    # Wenn die verdeckte Karte nicht spielbar ist: Ablage + aufgedeckte Karte nehmen
                     if not spielerdran.spielzug(spielerdran.verdeckt[-1], self.ablage, self.st, spielerdran.verdeckt):
                         self.nehme()
-                        if len(spielerdran.verdeckt) > 0:
-                            spielerdran.karten.append(spielerdran.verdeckt.pop())
+                        # if len(spielerdran.verdeckt) > 0: !!!
+                        #     spielerdran.karten.append(spielerdran.verdeckt.pop())
                     spielzugErfolgreich = True
             elif (-1 - karteId) < len(spielerdran.offen):
                 k = spielerdran.offen[-1 - karteId]
@@ -333,6 +339,9 @@ class Spiel:
                 return
 
         spielerdran.fertig = (len(spielerdran.karten) + len(spielerdran.offen) + len(spielerdran.verdeckt)) == 0
+
+        if spielerdran.fertig:
+            self.benachrichtige(self.dran)
 
         # Wenn Spielzug valide: nächster Spieler dran
         if spielzugErfolgreich:
@@ -363,8 +372,6 @@ class Spiel:
         msg = addJson(msg, "Ziehen", str(self.st.oben()))[:-2] + "\n"
         msg += "}"
 
-        print(msg)
-
         return msg
 
     # Offene Karten der anderen Spieler
@@ -388,7 +395,7 @@ class Spiel:
     # Gibt es bereits einen Sieger?
     def laeuft(self):
         for s in self.spieler:
-            if not s.fertig:
+            if not s.fertig and s.websocket is not None:
                 return True
         return False
 
@@ -403,14 +410,11 @@ def ladeSpiel(spielListe):
 if __name__ == '__main__':
     sp = Spiel()
 
-    if debug:
-        sp.st.karten = sp.st.karten[0:36]
 
     async def socketLoop(websocket, path):
         global sp
         print("Neue Verbindung")
         spieler = None
-        # sp = Spiel()
 
         # Führe Schleife aus bis Spieler die Verbindung trennt
         while True:
@@ -441,6 +445,7 @@ if __name__ == '__main__':
                         sp.nehme()
                     # Spieler kann nach einer ausgespielten 3 auch weiter sagen
                     elif msg[1] == "weiter":
+                        spieler.nachziehen(sp.st)
                         sp.naechster(0)
                     # bestimmte Karte ausspielen
                     else:

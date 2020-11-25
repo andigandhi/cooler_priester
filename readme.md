@@ -13,9 +13,11 @@ Das Backend ist komplett in Python geschrieben und kommuniziert über WebSockets
 3. "Client/.." im Web zugänglich machen
 4. "Server/main.py" starten
 
+## Spielanleitung
+Die Spielanleitung für "Schwuler Priester" ist unter "anleitung.md" einzusehen.
 
 ## TODO:
+- Gewinnanimationen
 - Bedienung vereinfachen
-- Spiel bei Beendigung zurücksetzen
 - Einiges an Bugfixes
-- Spielanleitung!!
+- Spielanleitung ausbauen

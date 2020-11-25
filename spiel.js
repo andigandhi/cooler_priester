@@ -36,9 +36,9 @@ var username = "";
 var andereSpieler = [];
 
 var webSocket = null;
+var timer = null;
 
-
-
+// Wandelt die KartenID in den Namen der Bilddatei einer Karte um
 function numberToFile(nr) {
 	"use strict";
 	if (!nr && nr!==0) {
@@ -53,13 +53,13 @@ function numberToFile(nr) {
 	return str;
 }
 
-
+// Rendert eine Karte aus der Kartenhand
 function renderCard(cardId, handNr) {
 	"use strict";
 	return "<img class=\"handKarte\" src=\"karten/"+numberToFile(cardId)+"\" alt=\"\" onClick=\"ausspielen("+cardId+", "+handNr+")\">";
 }
 
-
+// Rendert die komplette Kartenhand
 function renderHand() {
 	"use strict";
 	var str = "";
@@ -69,6 +69,7 @@ function renderHand() {
 	document.getElementById("hand").innerHTML = str;
 }
 
+// Rendert die letzten vier Karten des Ablagestapels
 function renderAblage() {
 	"use strict";
 	document.getElementById("ablage1").src = "karten/"+numberToFile(stapel[stapel.length-4]);
@@ -77,6 +78,7 @@ function renderAblage() {
 	document.getElementById("ablage4").src = "karten/"+numberToFile(stapel[stapel.length-1]);
 }
 
+// Rendert die offenen (bzw. geschlossenen) Karten des Spielers
 function renderOffen() {
 	"use strict";
 	if (offen.length === 0) {
@@ -90,11 +92,12 @@ function renderOffen() {
 	}
 }
 
+// Rendert die Namen und Karten der Mitspieler
 function renderAndereSpieler() {
 	"use strict";
 	for(var i = 0; i<andereSpieler.length/3; i++) {
 		var str = (andereSpieler[i*3] === dranName?"<b>":"");
-		str += andereSpieler[i*3] + (andereSpieler[i*3].toLowerCase().includes("hann")?" (kinda sus)":"");
+		str += andereSpieler[i*3] + (andereSpieler[i*3].toLowerCase().includes("hann")?" (hacker)":"");
 		str += (andereSpieler[i*3] === dranName?"</b>":"");
 		str += " <b>" + andereSpieler[i*3+1] + "</b><br>";
 		for (var j = 0; j<andereSpieler[i*3+2].length; j++) {
@@ -116,6 +119,7 @@ function renderAndereSpieler() {
 	}
 }
 
+// Ruft sämtliche Render Funktionen auf
 function render() {
 	"use strict";
 	renderHand();
@@ -136,23 +140,34 @@ function render() {
 	}
 }
 
-
+// Startet den Timer um nach einer 3 noch eine weitere Karte auszuspielen
 function startAusspielTimer() {
 	"use strict";
 	var secs = 5;
 	document.getElementById("weiterInDiv").style.display = "block";
-	var x = setInterval(function() {
+	stopAusspielTimer();
+	timer = setInterval(function() {
 		document.getElementById("weiterInDiv").innerHTML = "Weiter in "+secs+"s ...";
 		secs--;
 		if (secs < 0) {
-			document.getElementById("weiterInDiv").style.display = "none";
-			webSocket.send(username+";weiter");
-			clearInterval(x);
+			stopAusspielTimer();
 		}
 	}, 1000);
 }
 
+// Stoppt den Ausspieltimer
+function stopAusspielTimer() {
+    if (timer === null) {
+        return;
+    }
+    document.getElementById("weiterInDiv").style.display = "none";
+	webSocket.send(username+";weiter");
+	timer.clearInterval(x);
+}
 
+
+// Wird durch Klick auf eine eigene Karte ausgelöst
+// Tauscht entweder die eigenen Karten durch oder spielt die Karte aus
 function ausspielen(nr, handNr) {
 	"use strict";
 	if (!ausgetauscht) {
@@ -183,10 +198,12 @@ function ausspielen(nr, handNr) {
 	}
 }
 
+// Durch Klick auf Ablagestapel wird dieser Aufgenommen
 function aufnehmen() {
 	"use strict";
 	webSocket.send(username+";nehme"); 
 }
+
 
 function austauschen() {
 	"use strict";
@@ -203,9 +220,13 @@ function austauschen() {
 	document.getElementById("austauschDiv").style.display = "none";
 }
 
+// Einloggen beim Server und sämtliche Netzwerkangelegenheiten aufsetzen
 function login() {
 	"use strict";
 	username = document.getElementById("nameText").value.replace(/[^a-zA-Z]+/g, '');
+
+	username = username.substring(0,20);
+
 	document.getElementById("startSeite").style.display = "none";
 	document.getElementById("spielSeite").style.display = "inline";
 	
@@ -221,22 +242,30 @@ function login() {
 		var msg = JSON.parse(event.data);
 
 		if (msg.Message !== undefined) {
+		    var gifDiv = document.getElementByIs("gifDiv");
+
+		    //gifDiv.addChild(); //!!!
+
 			alert(msg.Message);
 			return;
 		}
-		
+
+
+		// Eigene Variablen vom Server aktualisieren
 		dran = (msg.Dran === username);
 		dranName = msg.Dran;
 		nextCard = msg.Ziehen;
 		stapel = msg.Ablage;
 		verdeckt = msg.Verdeckt;
 		andereSpieler = msg.Andere;
-		
+
+		// Wenn noch nicht ausgetauscht: Eigene Karten nicht andauernd zurücksetzen
 		if (ausgetauscht || hand.length === 0 ) {
 			hand = msg.Karten;
 			offen = msg.Offen;
 		}
-		
+
+		// Spiel rendern
 		render();
 	};
 	
