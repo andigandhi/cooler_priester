@@ -162,7 +162,7 @@ function stopAusspielTimer() {
     }
     document.getElementById("weiterInDiv").style.display = "none";
 	webSocket.send(username+";weiter");
-	timer.clearInterval(x);
+	clearInterval(timer);
 }
 
 
