@@ -284,7 +284,7 @@ class Spiel:
                     if spielerFertig == -1:
                         await self.spieler[i].websocket.send(self.socketNachricht(i))
                     else:
-                        await self.spieler[i].websocket.send("{\n\tMessage: \"" + self.spieler[spielerFertig].name +
+                        await self.spieler[i].websocket.send("{\n\t\"Message\": \"" + self.spieler[spielerFertig].name +
                                                              " ist fertig!\"\n}")
                 except websockets.ConnectionClosed as exc:
                     print("Verbindung zu " + self.spieler[i].name + " geschlossen!")
@@ -341,9 +341,6 @@ class Spiel:
                 return
 
         spielerdran.fertig = (len(spielerdran.karten) + len(spielerdran.offen) + len(spielerdran.verdeckt)) == 0
-
-        if spielerdran.fertig:
-            self.benachrichtige(self.dran)
 
         # Wenn Spielzug valide: nächster Spieler dran
         if spielzugErfolgreich:
@@ -473,6 +470,10 @@ if __name__ == '__main__':
             spieler = sp.getSpielerByName(msg[0])
             # Alle Spieler benachrichtigen
             await sp.benachrichtige()
+
+            if sp.spieler[sp.dran].fertig:
+                await sp.benachrichtige(sp.dran)
+
             if not sp.laeuft():
                 sp = Spiel()
 

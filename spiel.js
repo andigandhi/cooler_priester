@@ -163,6 +163,7 @@ function stopAusspielTimer() {
     document.getElementById("weiterInDiv").style.display = "none";
 	webSocket.send(username+";weiter");
 	clearInterval(timer);
+	timer = null;
 }
 
 
@@ -239,10 +240,11 @@ function login() {
 	};
 	
 	webSocket.onmessage = function (event) {
+	    console.log(event.data);
 		var msg = JSON.parse(event.data);
 
 		if (msg.Message !== undefined) {
-		    var gifDiv = document.getElementByIs("gifDiv");
+		    //var gifDiv = document.getElementById("gifDiv");
 
 		    //gifDiv.addChild(); //!!!
 
